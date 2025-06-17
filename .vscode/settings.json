@@ -1,3 +1,4 @@
 {
-    "cmake.sourceDirectory": "G:/CopticReader/The_App/coptic_reader/linux"
+    "cmake.sourceDirectory": "G:/CopticReader/The_App/coptic_reader/linux",
+    "java.configuration.updateBuildConfiguration": "interactive"
 }

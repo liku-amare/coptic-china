@@ -3,6 +3,7 @@ import 'package:coptic_reader/catalogue/daily_readings.dart';
 import 'package:coptic_reader/catalogue/readings_page.dart';
 import 'package:coptic_reader/widgets/custom_bottom_nav.dart';
 import 'package:flutter/material.dart';
+import 'father_message_page.dart';
 import '../utils/coptic_date.dart';
 import '../widgets/settings.dart';
 import '../database/bible_database_helper.dart';
@@ -69,6 +70,7 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     // String dateString = 'Retrieved ${versesList.length} verses';
+
     final isWide = MediaQuery.of(context).size.width > 600;
     final List<_GridCard> gridCards = [
       _GridCard(
@@ -184,12 +186,13 @@ class _HomePageState extends State<HomePage> {
               child: InkWell(
                 borderRadius: BorderRadius.circular(16),
                 onTap: () {
-                  // Navigator.push(
-                  //   context,
-                  //   MaterialPageRoute(
-                  //     builder: (context) => DailyReadings(verses: versesList),
-                  //   ),
-                  // );
+                  // Navigate to Father's Message page
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const FatherMessagePage(),
+                    ),
+                  );
                 },
                 child: Card(
                   shape: RoundedRectangleBorder(

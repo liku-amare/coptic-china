@@ -6,6 +6,9 @@ import 'widgets/custom_bottom_nav.dart';
 import 'widgets/settings.dart';
 import 'catalogue/home_page.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:amplify_flutter/amplify_flutter.dart';
+import 'package:amplify_auth_cognito/amplify_auth_cognito.dart';
+import 'amplify/amplifyconfiguration.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -15,6 +18,15 @@ void main() async {
   await initializeDateFormatting('zh_Hans', null);
   await initializeDateFormatting('ar', null);
   await initializeDateFormatting('zh_Hant', null);
+
+  try {
+    final auth = AmplifyAuthCognito();
+    await Amplify.addPlugins([auth]);
+    await Amplify.configure(amplifyconfig);
+    print('Amplify configured');
+  } catch (e) {
+    print('Error configuring Amplify: $e');
+  }
 
   // runApp(Phoenix(child: CopticReaderApp()));
   runApp(CopticReaderApp());
