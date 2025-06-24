@@ -273,4 +273,37 @@ class AuthService {
       return false;
     }
   }
+
+  /// Reset user's password
+  Future<ResetPasswordResult> resetPassword(String username) async {
+    try {
+      final result = await Amplify.Auth.resetPassword(username: username);
+      safePrint(
+        'Password reset sent to: ${result.nextStep.codeDeliveryDetails?.destination}',
+      );
+      return result;
+    } on AuthException catch (e) {
+      safePrint('Error resetting password: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Confirm reset password with a new password
+  Future<void> confirmResetPassword({
+    required String username,
+    required String newPassword,
+    required String confirmationCode,
+  }) async {
+    try {
+      await Amplify.Auth.confirmResetPassword(
+        username: username,
+        newPassword: newPassword,
+        confirmationCode: confirmationCode,
+      );
+      safePrint('Password has been successfully reset.');
+    } on AuthException catch (e) {
+      safePrint('Error confirming password reset: ${e.message}');
+      rethrow;
+    }
+  }
 }

@@ -5,10 +5,16 @@ import 'auth_service.dart';
 import 'login_page.dart';
 
 class ConfirmationCodePage extends StatefulWidget {
-  final String username;
+  final String? username;
+  final String? email;
+  final bool isPasswordReset;
 
-  const ConfirmationCodePage({Key? key, required this.username})
-    : super(key: key);
+  const ConfirmationCodePage({
+    Key? key,
+    this.username,
+    this.email,
+    this.isPasswordReset = false,
+  }) : super(key: key);
 
   @override
   State<ConfirmationCodePage> createState() => _ConfirmationCodePageState();
@@ -17,6 +23,7 @@ class ConfirmationCodePage extends StatefulWidget {
 class _ConfirmationCodePageState extends State<ConfirmationCodePage> {
   final _formKey = GlobalKey<FormState>();
   final _codeController = TextEditingController();
+  final _passwordController = TextEditingController();
   final _authService = AuthService();
 
   bool _isLoading = false;
@@ -25,6 +32,7 @@ class _ConfirmationCodePageState extends State<ConfirmationCodePage> {
   @override
   void dispose() {
     _codeController.dispose();
+    _passwordController.dispose();
     super.dispose();
   }
 
@@ -33,8 +41,8 @@ class _ConfirmationCodePageState extends State<ConfirmationCodePage> {
     return AppSettings.getNameValue(key);
   }
 
-  // Confirm sign up
-  Future<void> _confirmSignUp() async {
+  // Submit confirmation code
+  Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() {
@@ -43,32 +51,54 @@ class _ConfirmationCodePageState extends State<ConfirmationCodePage> {
     });
 
     try {
-      final result = await _authService.confirmSignUp(
-        username: widget.username,
-        confirmationCode: _codeController.text.trim(),
-      );
+      if (widget.isPasswordReset) {
+        await _authService.confirmResetPassword(
+          username: widget.email!,
+          newPassword: _passwordController.text,
+          confirmationCode: _codeController.text.trim(),
+        );
 
-      if (result.isSignUpComplete) {
         if (!mounted) return;
 
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Account confirmed successfully! Please sign in.'),
+            content: Text('Password reset successfully! Please sign in.'),
             backgroundColor: Colors.green,
           ),
         );
 
-        // Navigate to login page
         Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(builder: (context) => const LoginPage()),
           (route) => false,
         );
       } else {
-        setState(() {
-          _errorMessage = 'Confirmation failed. Please try again.';
-          _isLoading = false;
-        });
+        final result = await _authService.confirmSignUp(
+          username: widget.username!,
+          confirmationCode: _codeController.text.trim(),
+        );
+
+        if (result.isSignUpComplete) {
+          if (!mounted) return;
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Account confirmed successfully! Please sign in.'),
+              backgroundColor: Colors.green,
+            ),
+          );
+
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (context) => const LoginPage()),
+            (route) => false,
+          );
+        } else {
+          setState(() {
+            _errorMessage = 'Confirmation failed. Please try again.';
+            _isLoading = false;
+          });
+        }
       }
     } on AuthException catch (e) {
       setState(() {
@@ -91,7 +121,11 @@ class _ConfirmationCodePageState extends State<ConfirmationCodePage> {
     });
 
     try {
-      await _authService.resendSignUpCode(username: widget.username);
+      if (widget.isPasswordReset) {
+        await _authService.resetPassword(widget.email!);
+      } else {
+        await _authService.resendSignUpCode(username: widget.username!);
+      }
 
       if (!mounted) return;
 
@@ -122,7 +156,9 @@ class _ConfirmationCodePageState extends State<ConfirmationCodePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Verify Your Account'),
+        title: Text(
+          widget.isPasswordReset ? 'Reset Password' : 'Verify Your Account',
+        ),
         elevation: 4,
         backgroundColor: Colors.deepPurple,
       ),
@@ -148,7 +184,7 @@ class _ConfirmationCodePageState extends State<ConfirmationCodePage> {
 
                 // Info text
                 const Text(
-                  'A verification code has been sent to your email.',
+                  'A verification code has been sent to your email. Please enter it below.',
                   textAlign: TextAlign.center,
                   style: TextStyle(fontSize: 16),
                 ),
@@ -158,7 +194,7 @@ class _ConfirmationCodePageState extends State<ConfirmationCodePage> {
                 // Username display
                 Center(
                   child: Text(
-                    'Email: ${widget.username}',
+                    'Email: ${widget.isPasswordReset ? widget.email : widget.username}',
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -191,6 +227,30 @@ class _ConfirmationCodePageState extends State<ConfirmationCodePage> {
                   },
                 ),
 
+                if (widget.isPasswordReset) ...[
+                  const SizedBox(height: 20),
+                  TextFormField(
+                    controller: _passwordController,
+                    obscureText: true,
+                    decoration: InputDecoration(
+                      labelText: 'New Password',
+                      prefixIcon: const Icon(Icons.lock),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter your new password';
+                      }
+                      if (value.length < 6) {
+                        return 'Password must be at least 6 characters';
+                      }
+                      return null;
+                    },
+                  ),
+                ],
+
                 // Error message (if any)
                 if (_errorMessage != null)
                   Padding(
@@ -206,7 +266,7 @@ class _ConfirmationCodePageState extends State<ConfirmationCodePage> {
 
                 // Confirm button
                 ElevatedButton(
-                  onPressed: _isLoading ? null : _confirmSignUp,
+                  onPressed: _isLoading ? null : _submit,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.deepPurple,
                     padding: const EdgeInsets.symmetric(vertical: 15),
@@ -217,9 +277,11 @@ class _ConfirmationCodePageState extends State<ConfirmationCodePage> {
                   child:
                       _isLoading
                           ? const CircularProgressIndicator(color: Colors.white)
-                          : const Text(
-                            'Verify Account',
-                            style: TextStyle(fontSize: 16),
+                          : Text(
+                            widget.isPasswordReset
+                                ? 'Reset Password'
+                                : 'Verify Account',
+                            style: const TextStyle(fontSize: 16),
                           ),
                 ),
 

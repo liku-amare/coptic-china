@@ -24,6 +24,7 @@ dependencies:
   flutter_secure_storage: ^8.0.0
   url_launcher: ^6.1.14 # for launching URLs in the browser
   webview_flutter: ^4.4.2 # for displaying webpages within the app
+  # tink: ^1.6.1
 
 dev_dependencies:
   flutter_test:
