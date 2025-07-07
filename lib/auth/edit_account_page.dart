@@ -65,8 +65,8 @@ class _EditAccountPageState extends State<EditAccountPage> {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Profile updated successfully!'),
+        SnackBar(
+          content: Text(itemName('auth_profile_updated')),
           backgroundColor: Colors.green,
         ),
       );
@@ -88,10 +88,12 @@ class _EditAccountPageState extends State<EditAccountPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Theme.of(context).colorScheme.background,
       appBar: AppBar(
-        title: const Text('Edit Profile'),
-        elevation: 4,
-        backgroundColor: Colors.deepPurple,
+        title: Text(itemName('auth_edit_profile')),
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        foregroundColor: Colors.white,
+        elevation: 0,
       ),
       body: SingleChildScrollView(
         child: Padding(
@@ -104,10 +106,10 @@ class _EditAccountPageState extends State<EditAccountPage> {
                 const SizedBox(height: 20),
 
                 // Profile Image
-                const Center(
+                Center(
                   child: CircleAvatar(
                     radius: 60,
-                    backgroundColor: Colors.deepPurple,
+                    backgroundColor: Theme.of(context).colorScheme.primary,
                     child: Icon(Icons.person, size: 60, color: Colors.white),
                   ),
                 ),
@@ -119,15 +121,33 @@ class _EditAccountPageState extends State<EditAccountPage> {
                   controller: _fullNameController,
                   keyboardType: TextInputType.name,
                   decoration: InputDecoration(
-                    labelText: 'Full Name',
-                    prefixIcon: const Icon(Icons.person),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
+                    labelText: itemName('auth_full_name'),
+                    prefixIcon: Icon(
+                      Icons.person,
+                      color: Theme.of(context).colorScheme.primary,
                     ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide(
+                        color: Theme.of(context).colorScheme.outline,
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide(
+                        color: Theme.of(context).colorScheme.primary,
+                        width: 2,
+                      ),
+                    ),
+                    filled: true,
+                    fillColor: Theme.of(context).colorScheme.surface,
                   ),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return 'Please enter your full name';
+                      return itemName('auth_please_enter_full_name');
                     }
                     return null;
                   },
@@ -142,11 +162,29 @@ class _EditAccountPageState extends State<EditAccountPage> {
                 DropdownButtonFormField<String>(
                   value: _gender,
                   decoration: InputDecoration(
-                    labelText: 'Gender',
-                    prefixIcon: const Icon(Icons.people),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
+                    labelText: itemName('auth_gender'),
+                    prefixIcon: Icon(
+                      Icons.people,
+                      color: Theme.of(context).colorScheme.primary,
                     ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide(
+                        color: Theme.of(context).colorScheme.outline,
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide(
+                        color: Theme.of(context).colorScheme.primary,
+                        width: 2,
+                      ),
+                    ),
+                    filled: true,
+                    fillColor: Theme.of(context).colorScheme.surface,
                   ),
                   items:
                       _genders.map((gender) {
@@ -184,18 +222,20 @@ class _EditAccountPageState extends State<EditAccountPage> {
                 ElevatedButton(
                   onPressed: _isLoading ? null : _updateProfile,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.deepPurple,
-                    padding: const EdgeInsets.symmetric(vertical: 15),
+                    backgroundColor: Theme.of(context).colorScheme.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(16),
                     ),
+                    elevation: 2,
                   ),
                   child:
                       _isLoading
                           ? const CircularProgressIndicator(color: Colors.white)
-                          : const Text(
-                            'Save Changes',
-                            style: TextStyle(fontSize: 16),
+                          : Text(
+                            itemName('auth_save_changes'),
+                            style: const TextStyle(fontSize: 16),
                           ),
                 ),
               ],

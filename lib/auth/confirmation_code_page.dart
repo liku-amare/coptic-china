@@ -61,8 +61,8 @@ class _ConfirmationCodePageState extends State<ConfirmationCodePage> {
         if (!mounted) return;
 
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Password reset successfully! Please sign in.'),
+          SnackBar(
+            content: Text(itemName('auth_password_reset_successful')),
             backgroundColor: Colors.green,
           ),
         );
@@ -82,8 +82,8 @@ class _ConfirmationCodePageState extends State<ConfirmationCodePage> {
           if (!mounted) return;
 
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Account confirmed successfully! Please sign in.'),
+            SnackBar(
+              content: Text(itemName('auth_account_confirmed_successful')),
               backgroundColor: Colors.green,
             ),
           );
@@ -130,8 +130,8 @@ class _ConfirmationCodePageState extends State<ConfirmationCodePage> {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('A new verification code has been sent to your email.'),
+        SnackBar(
+          content: Text(itemName('auth_verification_code_sent')),
           backgroundColor: Colors.blue,
         ),
       );
@@ -155,12 +155,14 @@ class _ConfirmationCodePageState extends State<ConfirmationCodePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Theme.of(context).colorScheme.background,
       appBar: AppBar(
         title: Text(
-          widget.isPasswordReset ? 'Reset Password' : 'Verify Your Account',
+          widget.isPasswordReset ? itemName('auth_reset_password') : itemName('auth_verify_account'),
         ),
-        elevation: 4,
-        backgroundColor: Colors.deepPurple,
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        foregroundColor: Colors.white,
+        elevation: 0,
       ),
       body: SingleChildScrollView(
         child: Padding(
@@ -183,10 +185,10 @@ class _ConfirmationCodePageState extends State<ConfirmationCodePage> {
                 const SizedBox(height: 30),
 
                 // Info text
-                const Text(
-                  'A verification code has been sent to your email. Please enter it below.',
+                Text(
+                  itemName('auth_verification_code_sent_info'),
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 16),
+                  style: const TextStyle(fontSize: 16),
                 ),
 
                 const SizedBox(height: 20),
@@ -209,19 +211,37 @@ class _ConfirmationCodePageState extends State<ConfirmationCodePage> {
                   controller: _codeController,
                   keyboardType: TextInputType.number,
                   decoration: InputDecoration(
-                    labelText: 'Verification Code',
-                    hintText: 'Enter the 6-digit code',
-                    prefixIcon: const Icon(Icons.security),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
+                    labelText: itemName('auth_verification_code'),
+                    hintText: itemName('auth_enter_6_digit_code'),
+                    prefixIcon: Icon(
+                      Icons.security,
+                      color: Theme.of(context).colorScheme.primary,
                     ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide(
+                        color: Theme.of(context).colorScheme.outline,
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide(
+                        color: Theme.of(context).colorScheme.primary,
+                        width: 2,
+                      ),
+                    ),
+                    filled: true,
+                    fillColor: Theme.of(context).colorScheme.surface,
                   ),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return 'Please enter the verification code';
+                      return itemName('auth_please_enter_verification_code');
                     }
                     if (value.length < 6) {
-                      return 'Please enter a valid verification code';
+                      return itemName('auth_please_enter_valid_verification_code');
                     }
                     return null;
                   },
@@ -233,18 +253,36 @@ class _ConfirmationCodePageState extends State<ConfirmationCodePage> {
                     controller: _passwordController,
                     obscureText: true,
                     decoration: InputDecoration(
-                      labelText: 'New Password',
-                      prefixIcon: const Icon(Icons.lock),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
+                      labelText: itemName('auth_new_password'),
+                      prefixIcon: Icon(
+                        Icons.lock,
+                        color: Theme.of(context).colorScheme.primary,
                       ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide(
+                          color: Theme.of(context).colorScheme.outline,
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide(
+                          color: Theme.of(context).colorScheme.primary,
+                          width: 2,
+                        ),
+                      ),
+                      filled: true,
+                      fillColor: Theme.of(context).colorScheme.surface,
                     ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
-                        return 'Please enter your new password';
+                        return itemName('auth_please_enter_new_password');
                       }
                       if (value.length < 6) {
-                        return 'Password must be at least 6 characters';
+                        return itemName('auth_password_min_length');
                       }
                       return null;
                     },
@@ -268,19 +306,21 @@ class _ConfirmationCodePageState extends State<ConfirmationCodePage> {
                 ElevatedButton(
                   onPressed: _isLoading ? null : _submit,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.deepPurple,
-                    padding: const EdgeInsets.symmetric(vertical: 15),
+                    backgroundColor: Theme.of(context).colorScheme.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(16),
                     ),
+                    elevation: 2,
                   ),
                   child:
                       _isLoading
                           ? const CircularProgressIndicator(color: Colors.white)
                           : Text(
                             widget.isPasswordReset
-                                ? 'Reset Password'
-                                : 'Verify Account',
+                                ? itemName('auth_reset_password')
+                                : itemName('auth_verify_account'),
                             style: const TextStyle(fontSize: 16),
                           ),
                 ),
@@ -290,9 +330,12 @@ class _ConfirmationCodePageState extends State<ConfirmationCodePage> {
                 // Resend code button
                 TextButton(
                   onPressed: _isLoading ? null : _resendCode,
-                  child: const Text(
-                    "Didn't receive the code? Resend",
-                    style: TextStyle(color: Colors.deepPurple),
+                  child: Text(
+                    itemName('auth_didnt_receive_code'),
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.primary,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ),
               ],

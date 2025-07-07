@@ -174,7 +174,7 @@ class _DailyReadingsState extends State<DailyReadings> {
                                   item,
                                   textAlign: TextAlign.left,
                                   textDirection:
-                                      language2 == 'ar'
+                                      language1 == 'ar'
                                           ? TextDirection.rtl
                                           : TextDirection.ltr,
                                   style: const TextStyle(fontSize: 16),

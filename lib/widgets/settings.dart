@@ -9,6 +9,7 @@ class AppSettings {
   static const _languageKey = 'default_language';
   static const _language1Key = 'language1';
   static const _language2Key = 'language2';
+  static const _themeModeKey = 'theme_mode';
   // static const String _languageKey = 'default_language';
   static String _cachedLangCode = 'en'; // fallback default
 
@@ -17,6 +18,18 @@ class AppSettings {
     final prefs = await SharedPreferences.getInstance();
     String lang = prefs.getString(_languageKey) ?? 'English';
     _cachedLangCode = getLangCode(lang);
+  }
+
+  // Theme Mode Methods
+  static Future<ThemeMode> getThemeMode() async {
+    final prefs = await SharedPreferences.getInstance();
+    final themeModeIndex = prefs.getInt(_themeModeKey) ?? 0;
+    return ThemeMode.values[themeModeIndex];
+  }
+
+  static Future<void> setThemeMode(ThemeMode themeMode) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_themeModeKey, themeMode.index);
   }
 
   static Future<double> getFontSize() async {
@@ -86,7 +99,7 @@ class AppSettings {
   }
 
   static String getLangCodeFromId(int langId) {
-    List<String> langIds = ['ar', 'en', 'zh_hant', 'zh_hans'];
+    List<String> langIds = ['ar', 'en', 'zh_hant', 'zh_hans', 'coptic'];
     return langIds[langId - 1];
   }
 
@@ -96,6 +109,7 @@ class AppSettings {
       'English': 'en',
       '中文（繁體）': 'zh_hant',
       '中文（简体）': 'zh_hans',
+      'Coptic': 'coptic',
     };
     return langIds[langName] ?? 'en';
   }
@@ -106,9 +120,10 @@ class AppSettings {
       'English': 'en',
       '中文（繁體）': 'zh_hant',
       '中文（简体）': 'zh_hans',
+      'Coptic': 'coptic',
     };
     String code = langCodes[langName] ?? 'en';
-    List<String> langIdList = ['ar', 'en', 'zh_hant', 'zh_hans'];
+    List<String> langIdList = ['ar', 'en', 'zh_hant', 'zh_hans', 'coptic'];
     return langIdList.indexOf(code) + 1;
   }
 
@@ -117,12 +132,16 @@ class AppSettings {
   }
 
   static int getCachedLangId() {
-    List<String> langIds = ['ar', 'en', 'zh_hant', 'zh_hans'];
+    List<String> langIds = ['ar', 'en', 'zh_hant', 'zh_hans', 'coptic'];
     return langIds.indexOf(_cachedLangCode) + 1;
   }
 
   static int getLandIdFromCode(String code) {
-    List<String> langIds = ['ar', 'en', 'zh_hant', 'zh_hans'];
+    List<String> langIds = ['ar', 'en', 'zh_hant', 'zh_hans', 'coptic'];
     return langIds.indexOf(code) + 1;
+  }
+
+  static void updateCachedLanguage(String languageCode) {
+    _cachedLangCode = languageCode;
   }
 }

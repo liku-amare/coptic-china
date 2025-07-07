@@ -42,6 +42,35 @@ class _AccountManagementPageState extends State<AccountManagementPage> {
   }
 
   Future<void> _signOut() async {
+    // Show confirmation dialog first
+    final shouldLogout = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(itemName('auth_logout')),
+          content: Text(itemName('auth_logout_confirmation')),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: Text(itemName('auth_cancel')),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.red,
+              ),
+              child: Text('Logout'),
+            ),
+          ],
+        );
+      },
+    );
+
+    // If user cancels, don't proceed with logout
+    if (shouldLogout != true) {
+      return;
+    }
+
     try {
       await _authService.signOut();
       if (!mounted) return;
@@ -80,7 +109,11 @@ class _AccountManagementPageState extends State<AccountManagementPage> {
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
         children: [
-          Icon(icon, color: Colors.deepPurple, size: 28),
+          Icon(
+            icon, 
+            color: Theme.of(context).colorScheme.primary, 
+            size: 28
+          ),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
@@ -88,13 +121,17 @@ class _AccountManagementPageState extends State<AccountManagementPage> {
               children: [
                 Text(
                   label,
-                  style: const TextStyle(fontSize: 14, color: Colors.grey),
+                  style: TextStyle(
+                    fontSize: 14, 
+                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6)
+                  ),
                 ),
                 Text(
                   value,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
               ],
@@ -108,10 +145,12 @@ class _AccountManagementPageState extends State<AccountManagementPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Theme.of(context).colorScheme.background,
       appBar: AppBar(
         title: Text(itemName('account_page')),
-        elevation: 4,
-        backgroundColor: Colors.deepPurple,
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        foregroundColor: Colors.white,
+        elevation: 0,
       ),
       body:
           _isLoading
@@ -125,9 +164,9 @@ class _AccountManagementPageState extends State<AccountManagementPage> {
                       const SizedBox(height: 20),
 
                       // Profile image
-                      const CircleAvatar(
+                      CircleAvatar(
                         radius: 60,
-                        backgroundColor: Colors.deepPurple,
+                        backgroundColor: Theme.of(context).colorScheme.primary,
                         child: Icon(
                           Icons.person,
                           size: 60,
@@ -140,9 +179,10 @@ class _AccountManagementPageState extends State<AccountManagementPage> {
                       // User name in large text
                       Text(
                         _userData['fullName'] ?? 'User',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
+                          color: Theme.of(context).colorScheme.onSurface,
                         ),
                       ),
 
@@ -151,9 +191,9 @@ class _AccountManagementPageState extends State<AccountManagementPage> {
                       // User email
                       Text(
                         _userData['email'] ?? '',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 16,
-                          color: Colors.grey,
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
                         ),
                       ),
 
@@ -161,39 +201,41 @@ class _AccountManagementPageState extends State<AccountManagementPage> {
 
                       // User information section
                       Card(
-                        elevation: 4,
+                        elevation: 2,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(16),
                         ),
+                        color: Theme.of(context).colorScheme.surface,
                         child: Padding(
-                          padding: const EdgeInsets.all(16.0),
+                          padding: const EdgeInsets.all(20.0),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text(
-                                'Account Information',
+                              Text(
+                                itemName('auth_account_info'),
                                 style: TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
+                                  color: Theme.of(context).colorScheme.primary,
                                 ),
                               ),
                               const SizedBox(height: 16),
                               _buildInfoItem(
                                 icon: Icons.email_outlined,
-                                label: 'Email',
-                                value: _userData['email'] ?? 'Not provided',
+                                label: itemName('auth_email'),
+                                value: _userData['email'] ?? itemName('auth_not_provided'),
                               ),
                               const Divider(),
                               _buildInfoItem(
                                 icon: Icons.badge_outlined,
-                                label: 'Full Name',
-                                value: _userData['fullName'] ?? 'Not provided',
+                                label: itemName('auth_full_name'),
+                                value: _userData['fullName'] ?? itemName('auth_not_provided'),
                               ),
                               const Divider(),
                               _buildInfoItem(
                                 icon: Icons.people_outline,
-                                label: 'Gender',
-                                value: _userData['gender'] ?? 'Not provided',
+                                label: itemName('auth_gender'),
+                                value: _userData['gender'] ?? itemName('auth_not_provided'),
                               ),
                             ],
                           ),
@@ -204,22 +246,29 @@ class _AccountManagementPageState extends State<AccountManagementPage> {
 
                       // Account actions
                       Card(
-                        elevation: 4,
+                        elevation: 2,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(16),
                         ),
+                        color: Theme.of(context).colorScheme.surface,
                         child: Column(
                           children: [
                             // Edit Profile Button
                             ListTile(
-                              leading: const Icon(
+                              leading: Icon(
                                 Icons.edit,
-                                color: Colors.deepPurple,
+                                color: Theme.of(context).colorScheme.primary,
                               ),
-                              title: const Text('Edit Profile'),
-                              trailing: const Icon(
+                              title: Text(
+                                itemName('auth_edit_profile'),
+                                style: TextStyle(
+                                  color: Theme.of(context).colorScheme.onSurface,
+                                ),
+                              ),
+                              trailing: Icon(
                                 Icons.arrow_forward_ios,
                                 size: 16,
+                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
                               ),
                               onTap: () {
                                 Navigator.push(
@@ -248,7 +297,12 @@ class _AccountManagementPageState extends State<AccountManagementPage> {
                                 Icons.logout,
                                 color: Colors.red,
                               ),
-                              title: const Text('Logout'),
+                              title: Text(
+                                itemName('auth_logout'),
+                                style: const TextStyle(
+                                  color: Colors.red,
+                                ),
+                              ),
                               onTap: _signOut,
                             ),
                           ],

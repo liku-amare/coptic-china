@@ -85,9 +85,9 @@ class _SignupPageState extends State<SignupPage> {
 
       // Show success message
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text(
-            'Account created! Please check your email for a verification code.',
+            itemName('auth_account_created'),
           ),
           backgroundColor: Colors.green,
         ),
@@ -118,10 +118,12 @@ class _SignupPageState extends State<SignupPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Theme.of(context).colorScheme.background,
       appBar: AppBar(
-        title: const Text('Sign Up'),
-        elevation: 4,
-        backgroundColor: Colors.deepPurple,
+        title: Text(itemName('auth_sign_up')),
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        foregroundColor: Colors.white,
+        elevation: 0,
       ),
       body: SingleChildScrollView(
         child: Padding(
@@ -148,15 +150,33 @@ class _SignupPageState extends State<SignupPage> {
                   controller: _fullNameController,
                   keyboardType: TextInputType.name,
                   decoration: InputDecoration(
-                    labelText: 'Full Name',
-                    prefixIcon: const Icon(Icons.person),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
+                    labelText: itemName('auth_full_name'),
+                    prefixIcon: Icon(
+                      Icons.person,
+                      color: Theme.of(context).colorScheme.primary,
                     ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide(
+                        color: Theme.of(context).colorScheme.outline,
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide(
+                        color: Theme.of(context).colorScheme.primary,
+                        width: 2,
+                      ),
+                    ),
+                    filled: true,
+                    fillColor: Theme.of(context).colorScheme.surface,
                   ),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return 'Please enter your full name';
+                      return itemName('auth_please_enter_full_name');
                     }
                     return null;
                   },
@@ -169,20 +189,38 @@ class _SignupPageState extends State<SignupPage> {
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
                   decoration: InputDecoration(
-                    labelText: 'Email',
-                    prefixIcon: const Icon(Icons.email),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
+                    labelText: itemName('auth_email'),
+                    prefixIcon: Icon(
+                      Icons.email,
+                      color: Theme.of(context).colorScheme.primary,
                     ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide(
+                        color: Theme.of(context).colorScheme.outline,
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide(
+                        color: Theme.of(context).colorScheme.primary,
+                        width: 2,
+                      ),
+                    ),
+                    filled: true,
+                    fillColor: Theme.of(context).colorScheme.surface,
                   ),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return 'Please enter your email';
+                      return itemName('auth_please_enter_email');
                     }
                     if (!RegExp(
                       r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
                     ).hasMatch(value)) {
-                      return 'Please enter a valid email';
+                      return itemName('auth_please_enter_valid_email');
                     }
                     return null;
                   },
@@ -194,11 +232,29 @@ class _SignupPageState extends State<SignupPage> {
                 DropdownButtonFormField<String>(
                   value: _gender,
                   decoration: InputDecoration(
-                    labelText: 'Gender',
-                    prefixIcon: const Icon(Icons.people),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
+                    labelText: itemName('auth_gender'),
+                    prefixIcon: Icon(
+                      Icons.people,
+                      color: Theme.of(context).colorScheme.primary,
                     ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide(
+                        color: Theme.of(context).colorScheme.outline,
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide(
+                        color: Theme.of(context).colorScheme.primary,
+                        width: 2,
+                      ),
+                    ),
+                    filled: true,
+                    fillColor: Theme.of(context).colorScheme.surface,
                   ),
                   items:
                       _genders.map((gender) {
@@ -226,11 +282,15 @@ class _SignupPageState extends State<SignupPage> {
                   controller: _passwordController,
                   obscureText: !_showPassword,
                   decoration: InputDecoration(
-                    labelText: 'Password',
-                    prefixIcon: const Icon(Icons.lock),
+                    labelText: itemName('auth_password'),
+                    prefixIcon: Icon(
+                      Icons.lock,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
                     suffixIcon: IconButton(
                       icon: Icon(
                         _showPassword ? Icons.visibility_off : Icons.visibility,
+                        color: Theme.of(context).colorScheme.primary,
                       ),
                       onPressed: () {
                         setState(() {
@@ -239,21 +299,36 @@ class _SignupPageState extends State<SignupPage> {
                       },
                     ),
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(16),
                     ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide(
+                        color: Theme.of(context).colorScheme.outline,
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide(
+                        color: Theme.of(context).colorScheme.primary,
+                        width: 2,
+                      ),
+                    ),
+                    filled: true,
+                    fillColor: Theme.of(context).colorScheme.surface,
                   ),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return 'Please enter a password';
+                      return itemName('auth_please_enter_password');
                     }
                     if (value.length < 8) {
-                      return 'Password must be at least 8 characters';
+                      return itemName('auth_password_min_length');
                     }
                     // Check for strong password (at least one uppercase, one lowercase, one number)
                     if (!RegExp(
                       r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)',
                     ).hasMatch(value)) {
-                      return 'Password must contain uppercase, lowercase and number';
+                      return itemName('auth_password_strong');
                     }
                     return null;
                   },
@@ -266,13 +341,17 @@ class _SignupPageState extends State<SignupPage> {
                   controller: _confirmPasswordController,
                   obscureText: !_showConfirmPassword,
                   decoration: InputDecoration(
-                    labelText: 'Confirm Password',
-                    prefixIcon: const Icon(Icons.lock_outline),
+                    labelText: itemName('auth_confirm_password'),
+                    prefixIcon: Icon(
+                      Icons.lock_outline,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
                     suffixIcon: IconButton(
                       icon: Icon(
                         _showConfirmPassword
                             ? Icons.visibility_off
                             : Icons.visibility,
+                        color: Theme.of(context).colorScheme.primary,
                       ),
                       onPressed: () {
                         setState(() {
@@ -281,15 +360,30 @@ class _SignupPageState extends State<SignupPage> {
                       },
                     ),
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(16),
                     ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide(
+                        color: Theme.of(context).colorScheme.outline,
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide(
+                        color: Theme.of(context).colorScheme.primary,
+                        width: 2,
+                      ),
+                    ),
+                    filled: true,
+                    fillColor: Theme.of(context).colorScheme.surface,
                   ),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return 'Please confirm your password';
+                      return itemName('auth_please_confirm_password');
                     }
                     if (value != _passwordController.text) {
-                      return 'Passwords do not match';
+                      return itemName('auth_passwords_not_match');
                     }
                     return null;
                   },
@@ -312,18 +406,20 @@ class _SignupPageState extends State<SignupPage> {
                 ElevatedButton(
                   onPressed: _isLoading ? null : _signUp,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.deepPurple,
-                    padding: const EdgeInsets.symmetric(vertical: 15),
+                    backgroundColor: Theme.of(context).colorScheme.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(16),
                     ),
+                    elevation: 2,
                   ),
                   child:
                       _isLoading
                           ? const CircularProgressIndicator(color: Colors.white)
-                          : const Text(
-                            'Sign Up',
-                            style: TextStyle(fontSize: 16),
+                          : Text(
+                            itemName('auth_sign_up'),
+                            style: const TextStyle(fontSize: 16),
                           ),
                 ),
 
@@ -335,9 +431,12 @@ class _SignupPageState extends State<SignupPage> {
                     onPressed: () {
                       Navigator.pop(context);
                     },
-                    child: const Text(
-                      "Already have an account? Login",
-                      style: TextStyle(color: Colors.deepPurple),
+                    child: Text(
+                      itemName('auth_already_have_account'),
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.primary,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ),
                 ),
