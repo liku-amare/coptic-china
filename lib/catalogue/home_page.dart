@@ -3,6 +3,7 @@ import 'package:coptic_reader/catalogue/daily_readings.dart';
 import 'package:coptic_reader/catalogue/readings_page.dart';
 import 'package:coptic_reader/widgets/custom_bottom_nav.dart';
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'father_message_page.dart';
 import '../utils/coptic_date.dart';
 import '../widgets/settings.dart';
@@ -10,6 +11,7 @@ import '../database/bible_database_helper.dart';
 import '../main.dart';
 import 'package:intl/intl.dart';
 import 'chat_page.dart';
+import '../services/chat_notification_service.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -26,12 +28,34 @@ class _HomePageState extends State<HomePage> {
   int language1 = 2;
   int language2 = 1;
   ThemeMode _currentThemeMode = ThemeMode.system;
-  String _defaultLanguage = AppSettings.getCachedLang();
+  String _defaultLanguage = 'English'; // Initialize with default language name
   final LanguageNotifier _languageNotifier = LanguageNotifier();
+  
+  // Chat notification
+  final ChatNotificationService _chatNotificationService = ChatNotificationService();
+  StreamSubscription<int>? _chatNotificationSubscription;
+  int _unreadChatCount = 0;
 
   String getFormattedDate({String locale = 'en'}) {
     final now = DateTime.now();
-    final formatter = DateFormat('EEEE, MMMM d, y', locale);
+    
+    // Map custom locale codes to valid intl locale codes
+    String validLocale = locale;
+    switch (locale) {
+      case 'coptic':
+        validLocale = 'en'; // Use English as fallback for Coptic
+        break;
+      case 'zh_hant':
+        validLocale = 'zh_TW'; // Traditional Chinese
+        break;
+      case 'zh_hans':
+        validLocale = 'zh_CN'; // Simplified Chinese
+        break;
+      default:
+        validLocale = locale;
+    }
+    
+    final formatter = DateFormat('EEEE, MMMM d, y', validLocale);
     return formatter.format(now);
   }
 
@@ -51,6 +75,7 @@ class _HomePageState extends State<HomePage> {
     super.initState();
     _loadVerses();
     _loadSettings();
+    _initializeChatNotifications();
     
     // Listen to language changes
     _languageNotifier.addListener(_onLanguageChanged);
@@ -59,15 +84,45 @@ class _HomePageState extends State<HomePage> {
   @override
   void dispose() {
     _languageNotifier.removeListener(_onLanguageChanged);
+    _chatNotificationSubscription?.cancel();
     super.dispose();
+  }
+
+  Future<void> _initializeChatNotifications() async {
+    try {
+      await _chatNotificationService.initialize();
+      
+      _chatNotificationSubscription = _chatNotificationService.unreadCountStream.listen((count) {
+        if (mounted) {
+          setState(() {
+            _unreadChatCount = count;
+          });
+        }
+      });
+      
+      // Get initial count
+      setState(() {
+        _unreadChatCount = _chatNotificationService.currentUnreadCount;
+      });
+    } catch (e) {
+      debugPrint('Error initializing chat notifications: $e');
+    }
   }
 
   void _onLanguageChanged() {
     setState(() {
       currentLanguage = AppSettings.getCachedLangId();
-      _defaultLanguage = AppSettings.getCachedLang();
     });
+    // Get the updated default language from storage and reload verses
+    _loadDefaultLanguage();
     _loadVerses(); // Reload verses with new language
+  }
+
+  Future<void> _loadDefaultLanguage() async {
+    final defaultLanguage = await AppSettings.getDefaultLanguage();
+    setState(() {
+      _defaultLanguage = defaultLanguage;
+    });
   }
 
   void _loadVerses() async {
@@ -150,8 +205,15 @@ class _HomePageState extends State<HomePage> {
     
     await AppSettings.setDefaultLanguage(newLanguage);
     final languageCode = AppSettings.getLangCode(newLanguage);
+    
+    // Update the cached language code immediately
+    AppSettings.updateCachedLanguage(languageCode);
+    
     final languageNotifier = LanguageNotifier();
     languageNotifier.updateLanguage(languageCode);
+    
+    // Force a rebuild to update the icon
+    setState(() {});
   }
 
   @override
@@ -385,42 +447,79 @@ class _HomePageState extends State<HomePage> {
           ],
         ),
       ),
-      floatingActionButton: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              Theme.of(context).colorScheme.primary,
-              Theme.of(context).colorScheme.secondary,
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(28),
-          boxShadow: [
-            BoxShadow(
-              color: Theme.of(context).colorScheme.primary.withOpacity(0.4),
-              blurRadius: 12,
-              offset: const Offset(0, 6),
-              spreadRadius: 2,
+      floatingActionButton: Stack(
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Theme.of(context).colorScheme.primary,
+                  Theme.of(context).colorScheme.secondary,
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(28),
+              boxShadow: [
+                BoxShadow(
+                  color: Theme.of(context).colorScheme.primary.withOpacity(0.4),
+                  blurRadius: 12,
+                  offset: const Offset(0, 6),
+                  spreadRadius: 2,
+                ),
+              ],
             ),
-          ],
-        ),
-        child: FloatingActionButton(
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const ChatPage()),
-            );
-          },
-          backgroundColor: Colors.transparent,
-          foregroundColor: Colors.white,
-          elevation: 0,
-          tooltip: itemName('home_chat_with_church'),
-          child: const Icon(
-            Icons.chat_bubble_rounded,
-            size: 28,
+            child: FloatingActionButton(
+              onPressed: () async {
+                // Mark messages as read when opening chat
+                await _chatNotificationService.markAllAsRead();
+                
+                if (mounted) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const ChatPage()),
+                  );
+                }
+              },
+              backgroundColor: Colors.transparent,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              tooltip: itemName('home_chat_with_church'),
+              child: const Icon(
+                Icons.chat_bubble_rounded,
+                size: 28,
+              ),
+            ),
           ),
-        ),
+          
+          // Notification badge
+          if (_unreadChatCount > 0)
+            Positioned(
+              right: 0,
+              top: 0,
+              child: Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: Colors.red,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.white, width: 2),
+                ),
+                constraints: const BoxConstraints(
+                  minWidth: 24,
+                  minHeight: 24,
+                ),
+                child: Text(
+                  _unreadChatCount > 99 ? '99+' : _unreadChatCount.toString(),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }

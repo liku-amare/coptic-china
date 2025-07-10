@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import '../services/chat_service.dart';
+import 'dart:async';
+import '../services/simple_amplify_chat_service.dart';
+import '../models/abune_chat_message.dart';
 import '../widgets/settings.dart';
 import '../auth/auth_service.dart';
 import '../auth/login_page.dart';
@@ -12,13 +14,19 @@ class ChatPage extends StatefulWidget {
 }
 
 class _ChatPageState extends State<ChatPage> {
-  final ChatService _chatService = ChatService();
+  final SimpleAmplifyChatService _chatService = SimpleAmplifyChatService();
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final AuthService _authService = AuthService();
   
   bool _isLoading = true;
   bool _isAuthenticated = false;
+  bool _isAbune = false;
+  List<AbuneChatMessage> _messages = [];
+  int _unreadCount = 0;
+  
+  StreamSubscription<List<AbuneChatMessage>>? _messagesSubscription;
+  StreamSubscription<int>? _unreadCountSubscription;
 
   @override
   void initState() {
@@ -29,7 +37,6 @@ class _ChatPageState extends State<ChatPage> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Refresh auth status when dependencies change (e.g., returning from login)
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkAuthStatus();
     });
@@ -39,34 +46,52 @@ class _ChatPageState extends State<ChatPage> {
   void dispose() {
     _messageController.dispose();
     _scrollController.dispose();
+    _messagesSubscription?.cancel();
+    _unreadCountSubscription?.cancel();
     _chatService.dispose();
     super.dispose();
   }
 
   Future<void> _initializeChat() async {
     try {
-      // Check authentication status
       final isSignedIn = await _authService.isSignedIn();
       setState(() {
         _isAuthenticated = isSignedIn;
       });
 
-      // Initialize chat service
-      await _chatService.initialize();
-      
-      setState(() {
-        _isLoading = false;
-      });
+      if (isSignedIn) {
+        try {
+          await _chatService.initialize();
+          _isAbune = _chatService.isAbune;
+          
+          // Set up stream subscriptions
+          _messagesSubscription = _chatService.messagesStream.listen((messages) {
+            setState(() {
+              _messages = messages;
+            });
+            _scrollToBottom();
+          });
 
-      // Scroll to bottom after messages load
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _scrollToBottom();
-      });
+          _unreadCountSubscription = _chatService.unreadCountStream.listen((count) {
+            setState(() {
+              _unreadCount = count;
+            });
+          });
+          
+          debugPrint('✅ Chat service initialized successfully for ${_isAbune ? 'Abune' : 'regular user'}');
+        } catch (e) {
+          debugPrint('❌ Error initializing chat service: $e');
+          // Even if chat service fails, we still want to show the UI
+        }
+      }
     } catch (e) {
-      debugPrint('Error initializing chat: $e');
+      debugPrint('❌ Error checking authentication: $e');
+    } finally {
+      // ALWAYS stop loading and show UI
       setState(() {
         _isLoading = false;
       });
+      debugPrint('🎯 Loading complete - showing UI (authenticated: $_isAuthenticated)');
     }
   }
 
@@ -79,8 +104,7 @@ class _ChatPageState extends State<ChatPage> {
         });
         
         if (isSignedIn) {
-          // Re-initialize chat if user just logged in
-          await _chatService.initialize();
+          await _initializeChat();
         }
       }
     } catch (e) {
@@ -89,13 +113,15 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   void _scrollToBottom() {
-    if (_scrollController.hasClients) {
-      _scrollController.animateTo(
-        _scrollController.position.maxScrollExtent,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeOut,
-      );
-    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
   }
 
   Future<void> _sendMessage() async {
@@ -103,17 +129,23 @@ class _ChatPageState extends State<ChatPage> {
     if (message.isEmpty) return;
 
     _messageController.clear();
-    
-    // Add message to chat
-    await _chatService.sendMessage(message);
-    
-    // Refresh UI
-    setState(() {});
-    
-    // Scroll to bottom
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _scrollToBottom();
-    });
+
+    try {
+      if (_isAbune) {
+        // For Abune, always broadcast to all users
+        await _chatService.broadcastMessageToAll(message);
+      } else {
+        await _chatService.sendMessageToAbune(message);
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to send message: $e')),
+      );
+    }
+  }
+
+  Future<void> _markAllAsRead() async {
+    await _chatService.markAllMessagesAsRead();
   }
 
   String itemName(String key) {
@@ -125,38 +157,276 @@ class _ChatPageState extends State<ChatPage> {
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.background,
       appBar: AppBar(
-        title: Text(itemName('home_chat_with_church')),
+        title: Row(
+          children: [
+            Text(_isAbune ? 'Abune Chat - Broadcast' : 'Chat with Abune'),
+            if (_unreadCount > 0) ...[
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.red,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  '$_unreadCount',
+                  style: const TextStyle(color: Colors.white, fontSize: 12),
+                ),
+              ),
+            ],
+          ],
+        ),
         backgroundColor: Theme.of(context).colorScheme.primary,
         foregroundColor: Colors.white,
         elevation: 0,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () async {
-              setState(() {
-                _isLoading = true;
-              });
-              await _chatService.loadMessages();
-              setState(() {
-                _isLoading = false;
-              });
-            },
-          ),
+          if (_unreadCount > 0)
+            IconButton(
+              icon: const Icon(Icons.mark_email_read),
+              onPressed: _markAllAsRead,
+              tooltip: 'Mark all as read',
+            ),
         ],
       ),
-      body: Column(
-        children: [
-          // Messages List
-          Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _isAuthenticated
-                    ? _buildMessagesList()
-                    : _buildLoginPrompt(),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _isAuthenticated
+              ? _buildChatInterface()
+              : _buildLoginPrompt(),
+    );
+  }
+
+  Widget _buildChatInterface() {
+    return Column(
+      children: [
+        // Header showing chat with Abune
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+            border: Border(
+              bottom: BorderSide(
+                color: Theme.of(context).dividerColor,
+              ),
+            ),
           ),
-          
-          // Message Input
-          if (_isAuthenticated) _buildMessageInput(),
+          child: Row(
+            children: [
+              CircleAvatar(
+                backgroundColor: Theme.of(context).colorScheme.primary,
+                child: const Icon(Icons.person, color: Colors.white),
+              ),
+              const SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _isAbune ? 'Broadcasting to All Users' : 'Abune',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    _isAbune 
+                        ? 'Send messages to all users'
+                        : 'Send your messages to Abune',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        
+        // Messages
+        Expanded(
+          child: _buildMessagesList(),
+        ),
+        
+        // Message Input
+        _buildMessageInput(),
+      ],
+    );
+  }
+
+  Widget _buildMessagesList() {
+    if (_messages.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.chat_bubble_outline,
+              size: 64,
+              color: Theme.of(context).colorScheme.primary.withOpacity(0.5),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              _isAbune ? 'No messages yet' : 'Start a conversation with Abune',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return ListView.builder(
+      controller: _scrollController,
+      padding: const EdgeInsets.all(16),
+      itemCount: _messages.length,
+      itemBuilder: (context, index) {
+        final message = _messages[index];
+        return _buildMessageBubble(message);
+      },
+    );
+  }
+
+  Widget _buildMessageBubble(AbuneChatMessage message) {
+    final isFromCurrentUser = message.isFromCurrentUser;
+    final isFromAbune = message.isFromAbune;
+    
+    return Align(
+      alignment: isFromCurrentUser ? Alignment.centerRight : Alignment.centerLeft,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(12),
+        constraints: BoxConstraints(
+          maxWidth: MediaQuery.of(context).size.width * 0.7,
+        ),
+        decoration: BoxDecoration(
+          color: isFromCurrentUser
+              ? Theme.of(context).colorScheme.primary
+              : isFromAbune
+                  ? Colors.green.withOpacity(0.1)
+                  : Theme.of(context).colorScheme.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: isFromAbune
+              ? Border.all(color: Colors.green, width: 1)
+              : null,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (!isFromCurrentUser)
+              Text(
+                message.senderName,
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: isFromAbune ? Colors.green : Theme.of(context).colorScheme.primary,
+                  fontSize: 12,
+                ),
+              ),
+            const SizedBox(height: 4),
+            Text(
+              message.content,
+              style: TextStyle(
+                color: isFromCurrentUser 
+                    ? Colors.white 
+                    : Theme.of(context).colorScheme.onSurface,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  _formatTime(message.timestamp),
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: isFromCurrentUser 
+                        ? Colors.white.withOpacity(0.7)
+                        : Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+                  ),
+                ),
+                if (isFromCurrentUser) ...[
+                  const SizedBox(width: 4),
+                  Icon(
+                    _getStatusIcon(message.status),
+                    size: 12,
+                    color: Colors.white.withOpacity(0.7),
+                  ),
+                ],
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  IconData _getStatusIcon(MessageStatus status) {
+    switch (status) {
+      case MessageStatus.sending:
+        return Icons.access_time;
+      case MessageStatus.sent:
+        return Icons.check;
+      case MessageStatus.delivered:
+        return Icons.done_all;
+      case MessageStatus.read:
+        return Icons.done_all;
+      case MessageStatus.failed:
+        return Icons.error;
+    }
+  }
+
+  String _formatTime(DateTime timestamp) {
+    final now = DateTime.now();
+    final difference = now.difference(timestamp);
+    
+    if (difference.inDays > 0) {
+      return '${difference.inDays}d ago';
+    } else if (difference.inHours > 0) {
+      return '${difference.inHours}h ago';
+    } else if (difference.inMinutes > 0) {
+      return '${difference.inMinutes}m ago';
+    } else {
+      return 'Just now';
+    }
+  }
+
+  Widget _buildMessageInput() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        border: Border(
+          top: BorderSide(
+            color: Theme.of(context).dividerColor,
+          ),
+        ),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: _messageController,
+              decoration: InputDecoration(
+                hintText: _isAbune 
+                    ? 'Broadcast message to all users...'
+                    : 'Send message to Abune...',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(24),
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+              ),
+              maxLines: null,
+              textInputAction: TextInputAction.send,
+              onSubmitted: (_) => _sendMessage(),
+            ),
+          ),
+          const SizedBox(width: 8),
+          FloatingActionButton(
+            mini: true,
+            onPressed: _sendMessage,
+            child: const Icon(Icons.send),
+          ),
         ],
       ),
     );
@@ -174,7 +444,7 @@ class _ChatPageState extends State<ChatPage> {
           ),
           const SizedBox(height: 16),
           Text(
-            itemName('chat_login_required'),
+            'Login Required',
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
               color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
             ),
@@ -182,7 +452,7 @@ class _ChatPageState extends State<ChatPage> {
           ),
           const SizedBox(height: 8),
           Text(
-            itemName('chat_login_to_chat'),
+            'Please login to start chatting with Abune',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
               color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
             ),
@@ -196,240 +466,18 @@ class _ChatPageState extends State<ChatPage> {
                 MaterialPageRoute(builder: (context) => const LoginPage()),
               );
               
-              // Refresh authentication status when returning from login
               if (result == true) {
                 await _initializeChat();
               }
             },
             icon: const Icon(Icons.login),
-            label: Text(itemName('acc_login')),
+            label: const Text('Login'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.primary,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
             ),
           ),
         ],
       ),
     );
-  }
-
-  Widget _buildMessagesList() {
-    final messages = _chatService.messages;
-    
-    if (messages.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.chat_bubble_outline,
-              size: 64,
-              color: Theme.of(context).colorScheme.primary.withOpacity(0.5),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              itemName('chat_no_messages'),
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              itemName('chat_start_conversation'),
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return ListView.builder(
-      controller: _scrollController,
-      padding: const EdgeInsets.all(16),
-      itemCount: messages.length,
-      itemBuilder: (context, index) {
-        final message = messages[index];
-        return _buildMessageBubble(message);
-      },
-    );
-  }
-
-  Widget _buildMessageBubble(ChatMessage message) {
-    final isCurrentUser = message.isFromCurrentUser;
-    
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        mainAxisAlignment: isCurrentUser 
-            ? MainAxisAlignment.end 
-            : MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          if (!isCurrentUser) ...[
-            CircleAvatar(
-              radius: 16,
-              backgroundColor: Theme.of(context).colorScheme.primary,
-              child: Text(
-                message.senderName.isNotEmpty 
-                    ? message.senderName[0].toUpperCase() 
-                    : '?',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-          ],
-          
-          Flexible(
-            child: Container(
-              constraints: BoxConstraints(
-                maxWidth: MediaQuery.of(context).size.width * 0.75,
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(
-                color: isCurrentUser
-                    ? Theme.of(context).colorScheme.primary
-                    : Theme.of(context).colorScheme.surface,
-                borderRadius: BorderRadius.circular(20).copyWith(
-                  bottomLeft: isCurrentUser ? const Radius.circular(20) : const Radius.circular(4),
-                  bottomRight: isCurrentUser ? const Radius.circular(4) : const Radius.circular(20),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (!isCurrentUser) ...[
-                    Text(
-                      message.senderName,
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                  ],
-                  Text(
-                    message.content,
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: isCurrentUser
-                          ? Colors.white
-                          : Theme.of(context).colorScheme.onSurface,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    _formatTime(message.timestamp),
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: isCurrentUser
-                          ? Colors.white.withOpacity(0.7)
-                          : Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          
-          if (isCurrentUser) ...[
-            const SizedBox(width: 8),
-            CircleAvatar(
-              radius: 16,
-              backgroundColor: Theme.of(context).colorScheme.secondary,
-              child: const Icon(
-                Icons.person,
-                size: 16,
-                color: Colors.white,
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMessageInput() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 4,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: TextField(
-              controller: _messageController,
-              decoration: InputDecoration(
-                hintText: itemName('chat_type_message'),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(25),
-                  borderSide: BorderSide.none,
-                ),
-                filled: true,
-                fillColor: Theme.of(context).colorScheme.background,
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 12,
-                ),
-              ),
-              maxLines: null,
-              textInputAction: TextInputAction.send,
-              onSubmitted: (_) => _sendMessage(),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Container(
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.primary,
-              borderRadius: BorderRadius.circular(25),
-            ),
-            child: IconButton(
-              icon: const Icon(Icons.send, color: Colors.white),
-              onPressed: _sendMessage,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  String _formatTime(DateTime timestamp) {
-    final now = DateTime.now();
-    final difference = now.difference(timestamp);
-    
-    if (difference.inDays > 0) {
-      return '${difference.inDays}d ago';
-    } else if (difference.inHours > 0) {
-      return '${difference.inHours}h ago';
-    } else if (difference.inMinutes > 0) {
-      return '${difference.inMinutes}m ago';
-    } else {
-      return 'now';
-    }
   }
 } 

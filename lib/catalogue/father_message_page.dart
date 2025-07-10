@@ -34,7 +34,7 @@ class FatherMessagePage extends StatelessWidget {
       appBar: AppBar(
         title: Text(itemName('home_father_message')),
         elevation: 4,
-        backgroundColor: Colors.deepPurple,
+        backgroundColor: Color(0xFF8B4513),
       ),
       body: WebViewWidget(controller: controller),
     );

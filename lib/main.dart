@@ -9,6 +9,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:amplify_flutter/amplify_flutter.dart';
 import 'package:amplify_auth_cognito/amplify_auth_cognito.dart';
 import 'amplify/amplifyconfiguration.dart';
+import 'utils/app_logger.dart';
 
 // Global theme notifier
 class ThemeNotifier extends ChangeNotifier {
@@ -54,11 +55,12 @@ void main() async {
 
   try {
     final auth = AmplifyAuthCognito();
+    // final api = AmplifyAPI(); // Temporarily disabled until proper API configuration
     await Amplify.addPlugins([auth]);
     await Amplify.configure(amplifyconfig);
-    print('Amplify configured');
+    AppLogger.info('Amplify configured successfully');
   } catch (e) {
-    print('Error configuring Amplify: $e');
+    AppLogger.error('Error configuring Amplify: $e');
   }
 
   // runApp(Phoenix(child: CopticReaderApp()));

@@ -107,7 +107,7 @@ class _DailyReadingsState extends State<DailyReadings> {
           children: [
             Container(
               height: kToolbarHeight * 1.5,
-              color: Colors.deepPurple,
+              color: Color(0xFF2D2D2D),
               alignment: Alignment.center,
               child: Text(
                 itemName('reader_page_sections_header'),
@@ -163,9 +163,9 @@ class _DailyReadingsState extends State<DailyReadings> {
                               Text(
                                 key1,
                                 style: const TextStyle(
-                                  color: Colors.blueAccent,
+                                  color: Color(0xFF8B4513),
                                   fontWeight: FontWeight.bold,
-                                  fontSize: 16,
+                                  fontSize: 18,
                                 ),
                               ),
                               const SizedBox(height: 4),
@@ -194,9 +194,9 @@ class _DailyReadingsState extends State<DailyReadings> {
                                 key2,
                                 textAlign: TextAlign.right,
                                 style: const TextStyle(
-                                  color: Colors.blueAccent,
+                                  color:  Color(0xFF8B4513),
                                   fontWeight: FontWeight.bold,
-                                  fontSize: 16,
+                                  fontSize: 18,
                                 ),
                               ),
                               const SizedBox(height: 4),
@@ -222,43 +222,6 @@ class _DailyReadingsState extends State<DailyReadings> {
         ),
       ),
 
-      // ListView.builder(
-      //   itemCount: filteredVerses!.values
-      //       .map((list) => list.length)
-      //       .fold(0, (sum, length) => sum! + length),
-      //   // itemCount: filteredVerses.length,
-      //   itemBuilder: (context, index) {
-      //     final verse = filteredVerses[index];
-      //     final text = verse['prayer'] ?? '';
-
-      //     return Padding(
-      //       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      //       child: Column(
-      //         crossAxisAlignment: CrossAxisAlignment.start,
-      //         children: [
-      //           if (speaker != null)
-      //             Text(
-      //               speaker,
-      //               style: TextStyle(
-      //                 color: Colors.blueAccent,
-      //                 fontWeight: FontWeight.bold,
-      //                 fontSize: 16,
-      //               ),
-      //             ),
-      //           Text(
-      //             speaker != null
-      //                 ? (currentLanguage == 'zh_hans' ||
-      //                         currentLanguage == 'zh_hant')
-      //                     ? text.replaceFirst('$speaker：', '').trim()
-      //                     : text.replaceFirst('$speaker:', '').trim()
-      //                 : text,
-      //             style: TextStyle(fontSize: 16),
-      //           ),
-      //         ],
-      //       ),
-      //     );
-      //   },
-      // ),
     );
   }
 

@@ -3,12 +3,10 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'settings_page.dart';
 import '../widgets/settings.dart';
 import '../main.dart';
-import 'package:amplify_flutter/amplify_flutter.dart';
-import 'package:amplify_auth_cognito/amplify_auth_cognito.dart';
-import '../amplify/amplifyconfiguration.dart';
 import '../auth/login_page.dart';
 import '../auth/account_management_page.dart';
 import '../auth/auth_service.dart';
+import '../utils/app_logger.dart';
 
 class AccountPage extends StatefulWidget {
   const AccountPage({super.key});
@@ -30,8 +28,8 @@ class _AccountPageState extends State<AccountPage> {
     super.initState();
     _loadAppInfo();
     _configureAmplify();
-    
-    // Listen to language changes
+    _checkAuthStatus();
+    _logCurrentUserInfo();
     _languageNotifier.addListener(_onLanguageChanged);
   }
 
@@ -43,7 +41,6 @@ class _AccountPageState extends State<AccountPage> {
 
   void _onLanguageChanged() {
     setState(() {
-      // Force rebuild when language changes
     });
   }
 
@@ -70,19 +67,27 @@ class _AccountPageState extends State<AccountPage> {
           _isLoading = false;
         });
 
-        debugPrint(
-          'Auth status: signed in=$isSignedIn, valid token=$hasValidToken',
+        AppLogger.logAuthSuccess(
+          'Auth status checked',
+          data: {'signed_in': isSignedIn, 'valid_token': hasValidToken},
         );
+
+        if (hasValidToken) {
+          final userId = await _authService.getUserId();
+          if (userId != null) {
+            AppLogger.logUserId(userId, context: 'Auth Status Check');
+          }
+        }
       } else {
         setState(() {
           _isAuthenticated = false;
           _isLoading = false;
         });
 
-        debugPrint('Auth status: user not signed in');
+        AppLogger.logAuthAttempt('Auth status: user not signed in');
       }
     } catch (e) {
-      debugPrint('Error checking auth status: $e');
+      AppLogger.logAuthError('Error checking auth status', error: e);
       setState(() {
         _isAuthenticated = false;
         _isLoading = false;
@@ -104,7 +109,6 @@ class _AccountPageState extends State<AccountPage> {
       MaterialPageRoute(builder: (context) => const LoginPage()),
     );
 
-    // Refresh auth status when returning from login page
     if (result == true) {
       _checkAuthStatus();
     }
@@ -116,15 +120,33 @@ class _AccountPageState extends State<AccountPage> {
       MaterialPageRoute(builder: (context) => const AccountManagementPage()),
     );
 
-    // Refresh auth status when returning from account management page
-    debugPrint('Returned from account management page with result: $result');
+    AppLogger.info('Returned from account management page with result: $result');
 
-    // Force refresh auth status to update UI (especially important after logout)
     await _checkAuthStatus();
 
-    // If user logged out, show a message
     if (result == true && !_isAuthenticated) {
-      debugPrint('User logged out, UI should now show login button');
+      AppLogger.info('User logged out, UI should now show login button');
+    }
+  }
+
+  Future<void> _logCurrentUserInfo() async {
+    try {
+      final isSignedIn = await _authService.isSignedIn();
+      AppLogger.logUserInfo('Account page loaded', userData: {'isSignedIn': isSignedIn});
+      
+      if (isSignedIn) {
+        final userId = await _authService.getUserId();
+        if (userId != null) {
+          AppLogger.logUserId(userId, context: 'Account Page Load');
+        }
+        
+        final userInfo = await _authService.getCompleteUserInfo();
+        AppLogger.logUserInfo('Complete user data loaded', userData: userInfo);
+      } else {
+        AppLogger.logUserInfo('User not signed in on account page');
+      }
+    } catch (e) {
+      AppLogger.error('Error logging user info on account page', error: e);
     }
   }
 
@@ -193,6 +215,48 @@ class _AccountPageState extends State<AccountPage> {
                   itemName('acc_aboutapp'),
                   itemName('acc_learn_more'),
                   () {},
+                ),
+                // DEBUG: Reset authentication for new AWS setup
+                _buildActionTile(
+                  Icons.refresh,
+                  'Reset Auth Cache',
+                  'Clear old authentication data',
+                  () async {
+                    AppLogger.info('🔄 Manually triggering authentication reset...');
+                    await _authService.forceAuthenticationReset();
+                    await _checkAuthStatus();
+                    AppLogger.info('✅ Manual authentication reset complete');
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Authentication reset complete')),
+                    );
+                  },
+                ),
+                // DEBUG: Verify complete auth setup
+                _buildActionTile(
+                  Icons.verified_user,
+                  'Verify Auth Setup',
+                  'Test authentication & API connection',
+                  () async {
+                    AppLogger.info('🔍 Running comprehensive auth verification...');
+                    final report = await _authService.verifyAuthSetup();
+                    final status = report['overall_status'];
+                    final message = status == 'excellent' 
+                        ? '✅ Everything working perfectly!'
+                        : status == 'needs_attention'
+                            ? '⚠️ Some issues found - check logs'
+                            : '❌ Errors detected - check logs';
+                    
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(message),
+                        backgroundColor: status == 'excellent' 
+                            ? Colors.green 
+                            : status == 'needs_attention' 
+                                ? Colors.orange 
+                                : Colors.red,
+                      ),
+                    );
+                  },
                 ),
               ],
             ),

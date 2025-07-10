@@ -1,9 +1,9 @@
-import 'package:flutter/material.dart';
 import 'package:amplify_flutter/amplify_flutter.dart';
 import 'package:amplify_auth_cognito/amplify_auth_cognito.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../amplify/amplifyconfiguration.dart';
+import '../utils/app_logger.dart';
 
 class AuthService {
   static const String _tokenKey = 'auth_token';
@@ -29,9 +29,9 @@ class AuthService {
       // Configure Amplify
       await Amplify.configure(amplifyconfig);
 
-      debugPrint('Amplify configured successfully');
+      AppLogger.info('Amplify configured successfully');
     } catch (e) {
-      debugPrint('Error configuring Amplify: $e');
+      AppLogger.error('Error configuring Amplify: $e');
       rethrow;
     }
   }
@@ -57,10 +57,10 @@ class AuthService {
         options: CognitoSignUpOptions(userAttributes: userAttributes),
       );
 
-      debugPrint('Sign-up result: ${result.isSignUpComplete}');
+      AppLogger.info('Sign-up result: ${result.isSignUpComplete}');
       return result;
     } on AuthException catch (e) {
-      debugPrint('Sign-up error: ${e.message}');
+      AppLogger.error('Sign-up error: ${e.message}');
       rethrow;
     }
   }
@@ -76,10 +76,10 @@ class AuthService {
         confirmationCode: confirmationCode,
       );
 
-      debugPrint('Confirmation result: ${result.isSignUpComplete}');
+      AppLogger.info('Confirmation result: ${result.isSignUpComplete}');
       return result;
     } on AuthException catch (e) {
-      debugPrint('Confirm sign-up error: ${e.message}');
+      AppLogger.error('Confirm sign-up error: ${e.message}');
       rethrow;
     }
   }
@@ -91,10 +91,10 @@ class AuthService {
     try {
       final result = await Amplify.Auth.resendSignUpCode(username: username);
 
-      debugPrint('Code resent: ${result.codeDeliveryDetails.destination}');
+      AppLogger.info('Code resent: ${result.codeDeliveryDetails.destination}');
       return result;
     } on AuthException catch (e) {
-      debugPrint('Resend code error: ${e.message}');
+      AppLogger.error('Resend code error: ${e.message}');
       rethrow;
     }
   }
@@ -110,7 +110,7 @@ class AuthService {
         password: password,
       );
 
-      debugPrint('Login success? ${result.isSignedIn}');
+      AppLogger.info('Login success? ${result.isSignedIn}');
 
       if (result.isSignedIn) {
         // Save user data for offline access
@@ -119,7 +119,7 @@ class AuthService {
 
       return result;
     } on AuthException catch (e) {
-      debugPrint('Sign in error: ${e.message}');
+      AppLogger.error('Sign in error: ${e.message}');
       rethrow;
     }
   }
@@ -148,7 +148,7 @@ class AuthService {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_userKey, userData.toString());
     } catch (e) {
-      debugPrint('Error saving user data: $e');
+      AppLogger.error('Error saving user data: $e');
     }
   }
 
@@ -185,7 +185,7 @@ class AuthService {
 
       return userData;
     } catch (e) {
-      debugPrint('Error getting user data: $e');
+      AppLogger.error('Error getting user data: $e');
       return {};
     }
   }
@@ -202,9 +202,9 @@ class AuthService {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(_userKey);
 
-      debugPrint('Sign out completed');
+      AppLogger.info('Sign out completed');
     } on AuthException catch (e) {
-      debugPrint('Sign out error: ${e.message}');
+      AppLogger.error('Sign out error: ${e.message}');
       rethrow;
     }
   }
@@ -231,7 +231,7 @@ class AuthService {
       // Update stored user data
       await _saveUserData();
     } on AuthException catch (e) {
-      debugPrint('Update user attributes error: ${e.message}');
+      AppLogger.error('Update user attributes error: ${e.message}');
       rethrow;
     }
   }
@@ -242,7 +242,7 @@ class AuthService {
       final session = await Amplify.Auth.fetchAuthSession();
       return session.isSignedIn;
     } catch (e) {
-      debugPrint('Error checking auth status: $e');
+      AppLogger.error('Error checking auth status: $e');
       return false;
     }
   }
@@ -258,7 +258,7 @@ class AuthService {
       // Check if token exists in storage
       final token = await getAuthToken();
       if (token == null || token.isEmpty) {
-        debugPrint('No JWT token found in storage');
+        AppLogger.info('No JWT token found in storage');
         return false;
       }
 
@@ -266,10 +266,10 @@ class AuthService {
       final session = await Amplify.Auth.fetchAuthSession();
       final isValid = session.isSignedIn;
 
-      debugPrint('JWT token validation result: $isValid');
+      AppLogger.info('JWT token validation result: $isValid');
       return isValid;
     } catch (e) {
-      debugPrint('Error validating token: $e');
+      AppLogger.error('Error validating token: $e');
       return false;
     }
   }
@@ -278,12 +278,12 @@ class AuthService {
   Future<ResetPasswordResult> resetPassword(String username) async {
     try {
       final result = await Amplify.Auth.resetPassword(username: username);
-      safePrint(
+      AppLogger.info(
         'Password reset sent to: ${result.nextStep.codeDeliveryDetails?.destination}',
       );
       return result;
     } on AuthException catch (e) {
-      safePrint('Error resetting password: ${e.message}');
+      AppLogger.error('Error resetting password: ${e.message}');
       rethrow;
     }
   }
@@ -300,10 +300,222 @@ class AuthService {
         newPassword: newPassword,
         confirmationCode: confirmationCode,
       );
-      safePrint('Password has been successfully reset.');
+      AppLogger.info('Password has been successfully reset.');
     } on AuthException catch (e) {
-      safePrint('Error confirming password reset: ${e.message}');
+      AppLogger.error('Error confirming password reset: ${e.message}');
       rethrow;
+    }
+  }
+
+  /// Get the current user ID
+  Future<String?> getUserId() async {
+    try {
+      // Check if user is signed in
+      final isUserSignedIn = await isSignedIn();
+      if (!isUserSignedIn) {
+        AppLogger.info('User is not signed in');
+        return null;
+      }
+
+      // Get current user
+      final currentUser = await Amplify.Auth.getCurrentUser();
+      final userId = currentUser.userId;
+      
+      AppLogger.info('Current User ID: $userId');
+      return userId;
+    } catch (e) {
+      AppLogger.error('Error getting user ID: $e');
+      return null;
+    }
+  }
+
+  /// Get complete user information including ID
+  Future<Map<String, dynamic>> getCompleteUserInfo() async {
+    try {
+      // Check if user is signed in
+      final isUserSignedIn = await isSignedIn();
+      if (!isUserSignedIn) {
+        AppLogger.info('User is not signed in');
+        return {};
+      }
+
+      // Get user attributes and current user
+      final attributes = await Amplify.Auth.fetchUserAttributes();
+      final currentUser = await Amplify.Auth.getCurrentUser();
+
+      // Create complete user data map
+      final userData = <String, dynamic>{
+        'userId': currentUser.userId,
+        'username': currentUser.username,
+        'signInDetails': currentUser.signInDetails,
+      };
+
+      // Add attributes
+      for (final attribute in attributes) {
+        switch (attribute.userAttributeKey.key) {
+          case 'email':
+            userData['email'] = attribute.value;
+            break;
+          case 'name':
+            userData['fullName'] = attribute.value;
+            break;
+          case 'gender':
+            userData['gender'] = attribute.value;
+            break;
+          case 'sub':
+            userData['cognitoSub'] = attribute.value;
+            break;
+        }
+      }
+
+      // Log complete user information
+      AppLogger.info('=== COMPLETE USER INFO ===');
+      AppLogger.info('User ID: ${userData['userId']}');
+      AppLogger.info('Username: ${userData['username']}');
+      AppLogger.info('Email: ${userData['email']}');
+      AppLogger.info('Full Name: ${userData['fullName']}');
+      AppLogger.info('Gender: ${userData['gender']}');
+      AppLogger.info('Cognito Sub: ${userData['cognitoSub']}');
+      AppLogger.info('Sign In Details: ${userData['signInDetails']}');
+      AppLogger.info('========================');
+
+      return userData;
+    } catch (e) {
+      AppLogger.error('Error getting complete user info: $e');
+      return {};
+    }
+  }
+
+  /// Clear all app data including old chat messages and cached user data
+  Future<void> clearAllAppData() async {
+    try {
+      AppLogger.info('Clearing all app cached data...');
+      
+      // FIRST: Force sign out from Amplify to clear auth cache
+      try {
+        final isSignedIn = await Amplify.Auth.fetchAuthSession();
+        if (isSignedIn.isSignedIn) {
+          await Amplify.Auth.signOut(options: const SignOutOptions(globalSignOut: true));
+          AppLogger.info('Forced Amplify sign out completed');
+        }
+      } catch (e) {
+        AppLogger.info('No active session to sign out: $e');
+      }
+      
+      // Clear secure storage
+      await _secureStorage.deleteAll();
+      
+      // Clear shared preferences (including old chat data)
+      final prefs = await SharedPreferences.getInstance();
+      
+      // Clear ALL keys to ensure complete reset
+      await prefs.clear();
+      AppLogger.info('All SharedPreferences cleared');
+      
+      AppLogger.info('✅ All app cached data cleared successfully');
+    } catch (e) {
+      AppLogger.error('Error clearing app data: $e');
+    }
+  }
+
+  /// Force complete authentication reset
+  Future<void> forceAuthenticationReset() async {
+    try {
+      AppLogger.info('🔄 Forcing complete authentication reset...');
+      
+      // 1. Force global sign out
+      try {
+        await Amplify.Auth.signOut(options: const SignOutOptions(globalSignOut: true));
+        AppLogger.info('✅ Global sign out completed');
+      } catch (e) {
+        AppLogger.info('No session to sign out: $e');
+      }
+      
+      // 2. Clear all local storage
+      await _secureStorage.deleteAll();
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.clear();
+      
+      AppLogger.info('✅ All local data cleared');
+      AppLogger.info('🚀 Authentication reset complete - app will use NEW Amplify backend only');
+    } catch (e) {
+      AppLogger.error('Error during authentication reset: $e');
+    }
+  }
+
+  /// Comprehensive verification of authentication setup
+  Future<Map<String, dynamic>> verifyAuthSetup() async {
+    final Map<String, dynamic> report = {
+      'timestamp': DateTime.now().toIso8601String(),
+      'checks': <String, dynamic>{},
+      'overall_status': 'unknown',
+      'errors': <String>[],
+    };
+
+    try {
+      // 1. Check Amplify configuration
+      report['checks']['amplify_configured'] = await Amplify.isConfigured;
+      
+      // 2. Check authentication status
+      final authSession = await Amplify.Auth.fetchAuthSession();
+      report['checks']['user_signed_in'] = authSession.isSignedIn;
+      
+      if (authSession.isSignedIn) {
+        // 3. Get current user info
+        final currentUser = await Amplify.Auth.getCurrentUser();
+        report['checks']['user_id'] = currentUser.userId;
+        report['checks']['username'] = currentUser.username;
+        
+        // 4. Get user attributes
+        final attributes = await Amplify.Auth.fetchUserAttributes();
+        final userInfo = <String, String>{};
+        for (final attr in attributes) {
+          userInfo[attr.userAttributeKey.key] = attr.value;
+        }
+        report['checks']['user_attributes'] = userInfo;
+        
+        // 5. Check JWT token
+        final hasToken = await hasValidToken();
+        report['checks']['jwt_token_valid'] = hasToken;
+        
+        // 6. Test API connectivity (if chat service available)
+        try {
+          final testResponse = await Amplify.API.get('/items', 
+            queryParameters: {'test': 'auth_verification'}).response;
+          report['checks']['api_connectivity'] = testResponse.statusCode == 200;
+          report['checks']['api_status_code'] = testResponse.statusCode;
+        } catch (e) {
+          report['checks']['api_connectivity'] = false;
+          report['checks']['api_error'] = e.toString();
+        }
+      }
+      
+      // Determine overall status
+      final bool allGood = report['checks']['amplify_configured'] == true &&
+                          report['checks']['user_signed_in'] == true &&
+                          report['checks']['jwt_token_valid'] == true;
+      
+      report['overall_status'] = allGood ? 'excellent' : 'needs_attention';
+      
+      // Log the complete report
+      AppLogger.info('=== AUTHENTICATION SETUP VERIFICATION ===');
+      AppLogger.info('Overall Status: ${report['overall_status']}');
+      AppLogger.info('Amplify Configured: ${report['checks']['amplify_configured']}');
+      AppLogger.info('User Signed In: ${report['checks']['user_signed_in']}');
+      AppLogger.info('JWT Token Valid: ${report['checks']['jwt_token_valid']}');
+      AppLogger.info('API Connectivity: ${report['checks']['api_connectivity']}');
+      if (report['checks']['user_id'] != null) {
+        AppLogger.info('Current User ID: ${report['checks']['user_id']}');
+        AppLogger.info('Current Username: ${report['checks']['username']}');
+      }
+      AppLogger.info('=======================================');
+      
+      return report;
+    } catch (e) {
+      report['errors'].add(e.toString());
+      report['overall_status'] = 'error';
+      AppLogger.error('Auth verification failed: $e');
+      return report;
     }
   }
 }

@@ -132,7 +132,7 @@ class _ConfirmationCodePageState extends State<ConfirmationCodePage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(itemName('auth_verification_code_sent')),
-          backgroundColor: Colors.blue,
+          backgroundColor: Color(0xFF2D2D2D),
         ),
       );
 

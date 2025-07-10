@@ -118,7 +118,7 @@ class _ReaderPageExcelState extends State<ReaderPageExcel> {
           children: [
             Container(
               height: kToolbarHeight * 1.5,
-              color: Colors.deepPurple,
+              color: Color(0xFF2D2D2D),
               alignment: Alignment.center,
               child: Text(
                 itemName('reader_page_sections_header'),

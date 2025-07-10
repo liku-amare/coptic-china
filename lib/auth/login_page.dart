@@ -3,9 +3,8 @@ import 'package:amplify_flutter/amplify_flutter.dart';
 import '../widgets/settings.dart';
 import 'auth_service.dart';
 import 'signup_page.dart';
-import 'account_management_page.dart';
 import 'forgot_password_page.dart';
-import 'forgot_password_page.dart';
+import '../utils/app_logger.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -63,6 +62,14 @@ class _LoginPageState extends State<LoginPage> {
       );
 
       if (result.isSignedIn) {
+        // Log user ID and complete user information
+        AppLogger.info('=== LOGIN SUCCESSFUL ===');
+        final userId = await _authService.getUserId();
+        AppLogger.info('Logged in User ID: $userId');
+        
+        // Get and log complete user information
+        await _authService.getCompleteUserInfo();
+        
         // Navigate back to the account page after successful login
         if (!mounted) return;
 
@@ -80,8 +87,12 @@ class _LoginPageState extends State<LoginPage> {
         _showError('Login failed. Please try again.');
       }
     } on AuthException catch (e) {
+      AppLogger.info('=== LOGIN FAILED ===');
+      AppLogger.info('Auth Exception: ${e.message}');
       _showError('Login error: ${e.message}');
     } catch (e) {
+      AppLogger.info('=== LOGIN ERROR ===');
+      AppLogger.info('Unexpected error: $e');
       _showError('An unexpected error occurred: $e');
     }
   }

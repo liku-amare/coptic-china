@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:amplify_flutter/amplify_flutter.dart';
 import '../widgets/settings.dart';
 import 'auth_service.dart';
-import 'login_page.dart';
 import 'confirmation_code_page.dart';
+import '../utils/app_logger.dart';
 
 class SignupPage extends StatefulWidget {
   const SignupPage({super.key});
@@ -71,6 +71,12 @@ class _SignupPageState extends State<SignupPage> {
         _isLoading = true;
       });
 
+      // Log signup attempt
+      AppLogger.info('=== SIGNUP ATTEMPT ===');
+      AppLogger.info('Email: $email');
+      AppLogger.info('Full Name: ${_fullNameController.text.trim()}');
+      AppLogger.info('Gender: $_gender');
+
       // Attempt signup
       final result = await _authService.signUp(
         username: email,
@@ -79,6 +85,11 @@ class _SignupPageState extends State<SignupPage> {
         gender: _gender,
         fullName: _fullNameController.text.trim(),
       );
+
+      // Log signup result
+      AppLogger.info('=== SIGNUP RESULT ===');
+      AppLogger.info('Sign up complete: ${result.isSignUpComplete}');
+      AppLogger.info('Next step: ${result.nextStep.signUpStep}');
 
       // Check if component is still mounted
       if (!mounted) return;
@@ -99,7 +110,7 @@ class _SignupPageState extends State<SignupPage> {
       if (!mounted) return;
 
       // Debug print to verify we're reaching this point
-      debugPrint('Navigating to confirmation page for email: $email');
+      AppLogger.info('Navigating to confirmation page for email: $email');
 
       // Navigate to confirmation code page with explicit await
       await Navigator.pushReplacement(
@@ -109,8 +120,12 @@ class _SignupPageState extends State<SignupPage> {
         ),
       );
     } on AuthException catch (e) {
+      AppLogger.error('=== SIGNUP FAILED ===');
+      AppLogger.error('Auth Exception: ${e.message}');
       _showError('Sign up error: ${e.message}');
     } catch (e) {
+      AppLogger.error('=== SIGNUP ERROR ===');
+      AppLogger.error('Unexpected error: $e');
       _showError('An unexpected error occurred: $e');
     }
   }
